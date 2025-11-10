@@ -20,7 +20,7 @@ Allows to interact with local language models using Ollama. Conversation history
 - Required packages:
   - `ollama`
 
-## 📦 Installation
+## 📦 Installation - A) Download and run via run.py
 
 1. Clone the repository:
    ```bash
@@ -39,7 +39,31 @@ Allows to interact with local language models using Ollama. Conversation history
    pip install ollama
    ```
 
-## ▶️ Usage
+## 📦 Installation - B) Download and run via package install
+
+1. Clone the repository:
+   ```bash
+   git clone <your-repository>
+   cd ollamaChat
+   ```
+
+2. Create a virtual environment:
+   ```bash
+   python -m venv .venv
+   source .venv/bin/activate
+   ```
+
+3. Install dependencies:
+   ```bash
+   pip install ollama
+   ```
+
+4. Install package using:
+   ```bash
+   pip install .
+   ```
+
+## ▶️ Usage - A
 
 Run the program with:
 ```bash
@@ -48,8 +72,21 @@ Run the program with:
 
 Example:
 ```bash
-./run.sh llama3 prompt.txt 20
+./run.sh gemma3:12b-it-q8_0 prompt.txt 20
 ```
+
+## ▶️ Usage - B
+
+Run the program with:
+```bash
+./ollama-chat <model> <prompt_file> <max_length>
+```
+
+Example:
+```bash
+./ollama-chat gemma3:12b-it-q8_0 prompt.txt 20
+```
+
 
 ## 📁 Project Structure
 
