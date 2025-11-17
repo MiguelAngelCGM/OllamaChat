@@ -1,10 +1,10 @@
 # Ollama Chat - Chatbot with Ollama
 
-Very simple chatbot with context memory that uses Ollama models for conversations.
+Simple chatbot with context memory that uses Ollama models for conversations.
 
 ## 📋 Description
 
-Allows to interact with local language models using Ollama. Conversation history is automatically saved to a JSON file when using run.py.
+Allows to interact with local language models using Ollama. Conversation history is automatically saved to a JSON file when using run.py. Can resume previous conversations via serialization/deserialization.
 
 ## 🚀 Features
 
@@ -12,6 +12,12 @@ Allows to interact with local language models using Ollama. Conversation history
 - Conversation history saved in JSON format
 - Support for multiple Ollama models
 - Exit commands (`quit` or `exit`)
+  - When used, the app makes a backup at "./logs/date_time" located at run path.
+- Save and restore commands (`save`, `save:`, `restore` and `restore:`)
+  - `save` - Stores a conversational context file named "context.json" at run path.
+  - `save:` - Stores a conversational context file at path inidicated next, related to run path.
+  - `restore` - Restores a conversational context file at "./context.json" located at run path.
+  - `restore:` - Restores a conversational context file at path inidicated next, related to run path.
 
 ## 🛠 Requirements
 
@@ -20,7 +26,7 @@ Allows to interact with local language models using Ollama. Conversation history
 - Required packages:
   - `ollama`
 
-## 📦 Installation - A) Download and run via run.py
+## 📦 Installation
 
 1. Clone the repository:
    ```bash
@@ -34,48 +40,12 @@ Allows to interact with local language models using Ollama. Conversation history
    source .venv/bin/activate
    ```
 
-3. Install dependencies:
-   ```bash
-   pip install ollama
-   ```
-
-## 📦 Installation - B) Download and run via package install
-
-1. Clone the repository:
-   ```bash
-   git clone <your-repository>
-   cd ollamaChat
-   ```
-
-2. Create a virtual environment:
-   ```bash
-   python -m venv .venv
-   source .venv/bin/activate
-   ```
-
-3. Install dependencies:
-   ```bash
-   pip install ollama
-   ```
-
-4. Install package using:
+3. Install package using:
    ```bash
    pip install .
    ```
 
-## ▶️ Usage - A
-
-Run the program with:
-```bash
-./run.sh <model> <prompt_file> <max_length>
-```
-
-Example:
-```bash
-./run.sh gemma3:12b-it-q8_0 prompt.txt 20
-```
-
-## ▶️ Usage - B
+## ▶️ Usage
 
 Run the program with:
 ```bash
@@ -87,27 +57,34 @@ Example:
 ./ollama-chat gemma3:12b-it-q8_0 prompt.txt 20
 ```
 
-
 ## 📁 Project Structure
 
 ```
 .
-├── chat.py          # Main chat class
-├── run.py           # Main execution script
-├── run.sh           # Execution script
-├── prompt.txt       # System prompt file
-└── README.md        # This file
+├── aiss_ollama_tools_chat/
+│   ├── __init__.py
+│   ├── chat.py
+│   └── run.py
+├── _ai.txt
+├── run.sh
+├── setup.py
+├── LICENSE
+└── README.md
 ```
 
 ## 📄 Output
 
-Conversation history is saved in a timestamped folder:
+Conversation data is saved in a timestamped folder:
 ```
-2025-11-09_21-00-00/
-└── chat.log
+.
+└── logs/
+    └── 2025-11-09_21-00-00/
+        ├── chat.json
+        └── params.log
 ```
 
-The file contains the conversation history in JSON format.
+- chat.json: the conversation history in JSON format.
+- params.log: model data, system prompt, etc.
 
 ## 🤝 Contributions
 
