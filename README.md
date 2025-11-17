@@ -13,11 +13,13 @@ Allows to interact with local language models using Ollama. Conversation history
 - Support for multiple Ollama models
 - Exit commands (`quit` or `exit`)
   - When used, the app makes a backup at "./logs/date_time" located at run path.
-- Save and restore commands (`save`, `save:`, `restore` and `restore:`)
+- Save and restore commands (`save`, `save:`, `restore`, `restore:`, `rewind` and `rewind:`)
   - `save` - Stores a conversational context file named "context.json" at run path.
   - `save:` - Stores a conversational context file at path inidicated next, related to run path.
-  - `restore` - Restores a conversational context file at "./context.json" located at run path.
+  - `restore` - Restores a conversational context file at "context.json" located at run path.
   - `restore:` - Restores a conversational context file at path inidicated next, related to run path.
+  - `rewind` - Goes back to a previous turn.
+  - `rewind:` - Goes back an ammount of turns indicated next.
 
 ## 🛠 Requirements
 
@@ -49,12 +51,17 @@ Allows to interact with local language models using Ollama. Conversation history
 
 Run the program with:
 ```bash
-./ollama-chat <model> <prompt_file> <max_length>
+./ollama-chat <model> <prompt_file> <max_length> [options]
 ```
+
+Where options are:
+--maxLength or -l: Maximum context length (default: 20)
+--userName or -u: User name (default: "User")  
+--prevContext or -c: Path to previous chat context file (default: None) 
 
 Example:
 ```bash
-./ollama-chat gemma3:12b-it-q8_0 prompt.txt 20
+./ollama-chat gemma3:12b-it-q8_0 prompt.txt -l 20 -u Me -c context.json
 ```
 
 ## 📁 Project Structure

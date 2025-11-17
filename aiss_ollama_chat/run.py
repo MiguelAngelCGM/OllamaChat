@@ -6,8 +6,6 @@ import json
 
 from aiss_ollama_chat.chat import Chat
 
-
-
 def main():
     parser = argparse.ArgumentParser(
         description='OpenAPI user-assistant chat app with tools support.',
@@ -16,36 +14,41 @@ def main():
     
     parser.add_argument('model', help='Model to use')
     parser.add_argument('sysPrompt', help='Plain text file with the system prompt')
-    parser.add_argument('maxLength', type=int, help='Max context lenght')
     parser.add_argument('--maxLength', '-l', type=int, default=20,
                     help='Maximum context lenght (default: 20)')
+    parser.add_argument('--userName', '-u', type=str, default="User",
+                    help='User name (default: "User")')
     parser.add_argument('--prevContext', '-c', type=str, default=None,
                     help='Txt file path with previous chat context (default: None)')
 
     args = parser.parse_args()
 
-    chat = Chat(args.model, args.sysPrompt, args.maxLength, args.prevContext)
+    chat = Chat(args.model, args.sysPrompt, args.maxLength, args.userName, args.prevContext)
     while True:
-        prompt = input("You: ")
-        if prompt in ["quit", "exit"]:
-            print("Good bye!")
-            break
-        elif prompt.startswith("save"):
-            if prompt.startswith("save:"):
-                output = chat.serializeContext(prompt[len("save:"):].strip())
-                if output: print(output)
+        prompt = input(f"{chat.userName}: ")
+        try:
+            if prompt in ["quit", "exit"]:
+                print("Good bye!")
+                break
+            elif prompt.startswith("save"):
+                if prompt.startswith("save:"):
+                    chat.serializeContext(prompt[len("save:"):].strip())
+                else:
+                    chat.serializeContext("./context.json")
+            elif prompt.startswith("restore"):
+                if prompt.startswith("restore:"):
+                    chat.deserializeContext(prompt[len("restore:"):].strip())
+                else:
+                    chat.deserializeContext("./context.json")
+            elif prompt.startswith("rewind"):
+                if prompt.startswith("rewind:"):
+                    chat.rewind(int(prompt[len("rewind:"):].strip()))
+                else:
+                    chat.rewind()
             else:
-                output = chat.serializeContext("./context.json")
-                if output: print(output)
-        elif prompt.startswith("restore"):
-            if prompt.startswith("restore:"):
-                output = chat.deserializeContext(prompt[len("restore:"):].strip())
-                if output: print(output)
-            else:
-                output = chat.deserializeContext("./context.json")
-                if output: print(output)
-        else:
-            print(f"\n{chat.model}: {chat.doChat(prompt)}\n")
+                print(f"\n{chat.model}: {chat.doChat(prompt)}\n")
+        except Exception as e:
+            print(f"{e}\n")
     chat.makeBackup()
     return
 

@@ -1,4 +1,5 @@
 import os
+from pathlib import Path
 import time
 import ollama
 import datetime
@@ -15,8 +16,9 @@ class Chat:
             'content': content
         }
 
-    def __init__(self, model:str, sysPrompt1:str, maxChatLength:int=20, prevContext=None):
+    def __init__(self, model:str, sysPrompt1:str, maxChatLength:int=20, userName:str="user", prevContext:str=None):
         self.model:str = model
+        self.userName:str = userName
         self.chatHistory:dict[str, str] = []
         self.sysPrompt:str = ""
         self.maxChatLength:int = maxChatLength
@@ -26,38 +28,51 @@ class Chat:
         if prevContext:
             self.deserializeContext(prevContext)
     
-    def __chatOllama(self, prompt:str) -> str:
+    def doChat(self, prompt:str) -> str:
         self.chatHistory.append(self.strMsg("user", prompt))
         response = ollama.chat(self.model, messages=[{"role": "system", "content": self.sysPrompt}] + self.chatHistory[-self.maxChatLength:])
         msg = response['message'].content
         self.chatHistory.append(self.strMsg("assistant", msg))
         return msg
     
-    def doChat(self, prompt:str) -> str:
-        return self.__chatOllama(prompt)
-    
     def getChatHistory(self) -> str:
         return self.chatHistory
     
     def getChatHistoryFormatted(self) -> str:
-
-        return ""
+        formattedStrings = []
+        i = 0
     
+        for dictionary in self.chatHistory:
+            turnNum = (i // 2) * 2
+            role = dictionary.get("role", "")
+            content = dictionary.get("content", "")
+            if role == "user":
+                formattedString = f"Turn {turnNum} - {self.userName}: {content}"
+            else:
+                formattedString = f"Turn {turnNum} - {self.model}: {content}"
+            formattedStrings.append(formattedString)
+            i += 1
+        return "\n".join(formattedStrings)
+
     def rewind(self, turns=1) -> str:
-        self.chatHistory = self.chatHistory[:-min(turns, len(self.chatHistory))]
+        if turns < 0:
+            raise ValueError(f"Rewind parameter `turns` cannot be a negative value. Request: {turns}")
+        self.chatHistory = self.chatHistory[:-min(turns*2, len(self.chatHistory))]
 
     def _safeSerialize(self, path, data) -> None:
         try:
-            with open(path, "w") as archivo:
-                archivo.write(json.dumps(data, indent=2, ensure_ascii=False))
+            fullPath = Path(path)
+            fullPath.parent.mkdir(parents=True, exist_ok=True)
+            with open(path, 'w', encoding='utf-8') as file:
+                file.write(json.dumps(data, indent=2, ensure_ascii=False))
         except FileNotFoundError:
-            return f"The file '{path}' does not exist"
+            raise FileNotFoundError(f"The file '{path}' does not exist")
         except PermissionError:
-            return f"You don't have permissions to access '{path}'"
+            raise PermissionError(f"You don't have permissions to access '{path}'")
         except UnicodeDecodeError:
-            return f"Encoding error in '{path}'"
+            raise UnicodeDecodeError(f"Encoding error in '{path}'")
         except Exception as e:
-            return f"Unknown error: {e}"
+            raise Exception(f"Unknown error: {e}")
         return None
 
     def _safeDeserialize(self, path):
@@ -65,13 +80,13 @@ class Chat:
             with open(path, 'r', encoding='utf-8') as file:
                 return json.load(file)
         except FileNotFoundError:
-            return f"The file '{path}' does not exist"
+            raise FileNotFoundError(f"The file '{path}' does not exist")
         except PermissionError:
-            return f"You don't have permissions to access '{path}'"
+            raise PermissionError(f"You don't have permissions to access '{path}'")
         except UnicodeDecodeError:
-            return f"Encoding error in '{path}'"
+            raise UnicodeDecodeError(f"Encoding error in '{path}'")
         except Exception as e:
-            return f"Unknown error: {e}"
+            raise Exception(f"Unknown error: {e}")
         return None
 
     def serializeContext(self, path):
@@ -84,6 +99,7 @@ class Chat:
         self._safeSerialize(path, {
                 "model":self.model,
                 "maxChatLength":self.maxChatLength,
+                "userName":self.userName,
                 "sysPrompt":self.sysPrompt
             })
 
@@ -91,6 +107,7 @@ class Chat:
         data = self._safeDeserialize(path)
         self.model = data["model"]
         self.maxChatLength = data["maxChatLength"]
+        self.userName = data["userName"]
         self.sysPrompt = data["sysPrompt"]
 
     def makeBackup(self, folder:str = None):
