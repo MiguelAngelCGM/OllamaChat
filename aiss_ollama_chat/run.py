@@ -29,11 +29,11 @@ def main():
     while True:
         prompt = input(f"{chat.userName}: ")
         try:
-            msg = chat.chat(prompt)
-            if msg == None:
+            if prompt.startswith("exit"):
                 print("Good bye!")
                 break
-            print(f"\n\n{msg}")
+            prompt = chat.chat(prompt)
+            print(f"\n\n{prompt}")
         except Exception as e:
             print(f"{e}\n")
     chat.makeBackup()

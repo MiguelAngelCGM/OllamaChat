@@ -5,8 +5,7 @@ setup(
     version="0.2.0",
     packages=find_packages(),
     install_requires=[
-        "ollama",
-        "pyperclip"
+        "ollama"
     ],
     entry_points={
         "console_scripts": [

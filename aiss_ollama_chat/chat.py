@@ -40,7 +40,6 @@ class Chat:
         self.maxChatLength:int = maxChatLength
         self.addDateTimeToPrompt:bool = addDateTimeToPrompt
         self.operations = {
-            "exit": self._handleExit,
             "save": self._handleSave,
             "restore": self._handleRestore,
             "rewind": self._handleRewind
@@ -69,9 +68,6 @@ class Chat:
         except Exception as e:
             raise Exception(f"{e}\\n")
         return
-
-    def _handleExit(self, prompt: str) -> str:
-        return None
 
     def _handleSave(self, prompt: str) -> str:
         if prompt.startswith("save:"):
@@ -106,7 +102,10 @@ class Chat:
         self.chatHistory = self.chatHistory[:-min(turns*2, len(self.chatHistory))]
 
     def getLastContextMsg(self):
-        return self.chatHistory[-1]
+        if len(self.chatHistory) == 0:
+            return ""
+        else:
+            return self.chatHistory[-1]['content']
 
     def getChatHistoryFormatted(self) -> str:
         formattedStrings = []
