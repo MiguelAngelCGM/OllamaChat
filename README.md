@@ -20,7 +20,11 @@ Allows to interact with local language models using Ollama. Conversation history
   - `restore:` - Restores a conversational context file at path inidicated next, related to run path.
   - `rewind` - Goes back to a previous turn.
   - `rewind:` - Goes back an ammount of turns indicated next.
-- Commands are avaliable at chat.py -> chat(prompt). Please use doChat(prompt) if you don't need commands.
+- Commands are avaliable at function chat.py -> chat(prompt). Please use doChat(prompt) if you don't need commands.
+- Flow control keyboard commands:
+  - `3x Cntrl+C` - Forces App exit.
+- Clipboard commands:
+  - `@@` - It will be replaced with clipboard's contents.
 
 ## 🛠 Requirements
 
@@ -28,6 +32,10 @@ Allows to interact with local language models using Ollama. Conversation history
 - Ollama installed and running
 - Required packages:
   - `ollama`
+- (Linux) 'pyperclip' clipboard support requires:
+  - `xclip` for X11
+  - `wl-clipboard` for Wayland (not tested)
+  - `cliphist` for Wayland (not tested)
 
 ## 📦 Installation
 

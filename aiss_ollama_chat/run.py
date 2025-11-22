@@ -1,3 +1,4 @@
+import signal
 import sys
 import argparse
 import os
@@ -6,7 +7,21 @@ import json
 
 from aiss_ollama_chat.chat import Chat
 
+FORCE_EXIT = 3
+
 def main():
+    def signalHandler(sig, frame):
+        global FORCE_EXIT
+        if FORCE_EXIT == 0:
+            print("\n--FORCE EXIT--")
+            sys.exit(0)
+        else:
+            print(f"\n--FORCE EXIT IN {FORCE_EXIT}--")
+            FORCE_EXIT -= 1
+        return
+    
+    signal.signal(signal.SIGINT, signalHandler)
+
     parser = argparse.ArgumentParser(
         description='OpenAPI user-assistant chat app.',
         epilog='Example: ollama-chat gemma3:12b-it-q8_0 sysPrompt.txt 20'
@@ -27,6 +42,8 @@ def main():
 
     chat = Chat(args.model, args.sysPrompt, args.maxLength, args.userName, args.prevContext, args.addDateTimeToPrompt)
     while True:
+        global FORCE_EXIT
+        FORCE_EXIT = 3
         prompt = input(f"{chat.userName}: ")
         try:
             if prompt.startswith("exit"):
