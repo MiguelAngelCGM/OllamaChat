@@ -4,6 +4,7 @@ import ollama
 import datetime
 import re
 import pyperclip
+from typing import List
 
 from aiss_ollama_chat.fileIO import FileIO
 
@@ -17,38 +18,24 @@ class Chat:
         out = f"{text[:index]}\n```\n{clipBoard}\n```\n{text[index + len('@@'):]}"
         return out
     
-    @staticmethod
-    def strMsg(event_type:str, content:str, turn:int, addDateTimeToContent:bool=False) -> dict[str, str]:
+    def strMsg(self, event_type:str, content:str, turn:int=None) -> dict[str, str]:
         dateTime = datetime.datetime.now().isoformat()
-        return {
-            'turn': turn,
-            'timestamp': dateTime,
+        dict = {
             'role': event_type,
-            'content': f"{dateTime}\n{content}" if addDateTimeToContent else content
+            'content': f"{dateTime}\n{content}" if self.addDateTimeToPrompt else content
         }
+        if self.addTurnToOllamaDict and turn:
+            dict['turn'] = turn
+        if self.addTimestampToOllamaDict:
+            dict['timestamp'] = dateTime
+        return dict
     
-    @staticmethod
-    def strSys(content:str) -> dict[str, str]:
-        return {"role": "system", "content": content}
+    def strSys(self, sysPrompt=None) -> dict[str, str]:
+        return {"role": "system", "content": sysPrompt if sysPrompt else self.sysPrompt}
 
-    def __init__(self, model:str, sysPrompt:str, maxChatLength:int=20, userName:str="user", assistantName:str=None, prevContext:str=None, addDateTimeToPrompt:bool=False, sysPromptDropTurn:int=None):
+    def __init__(self, model:str, sysPrompt:str, maxChatLength:int=20, userName:str="user", assistantName:str="assistant", prevContext:str=None, addTimestampToOllamaDict:bool=False, addTurnToOllamaDict:bool=False, addDateTimeToPrompt:bool=False, sysPromptDropTurn:int=None):
         self.model:str = model
         self.sysPrompt:str = ""
-        self.maxChatLength:int = maxChatLength
-        self.userName:str = userName
-        if assistantName:
-            self.assistantName = assistantName
-        else:
-            self.assistantName = model
-        self.addDateTimeToPrompt:bool = addDateTimeToPrompt
-        self.sysPromptDropTurn:int = sysPromptDropTurn
-        self.chatHistory:dict[str, str] = []
-        self.operations = {
-            "save": self._handleSave,
-            "restore": self._handleRestore,
-            "rewind": self._handleRewind,
-            "print": self._handlePrint
-        }
         if sysPrompt.endswith(".txt"):
             try:
                 with open(sysPrompt, "r") as archivo:
@@ -57,30 +44,40 @@ class Chat:
                 print(e)
         else:
             self.sysPrompt = sysPrompt
+        self.maxChatLength:int = maxChatLength
+        self.userName:str = userName
+        self.assistantName:str = assistantName
         if prevContext:
             try:
                 self.chatHistory = FileIO.deserializeDict(prevContext)
             except Exception as e:
                 print(e)
+        self.addTimestampToOllamaDict:bool = addTimestampToOllamaDict
+        self.addTurnToOllamaDict:bool = addTurnToOllamaDict
+        self.addDateTimeToPrompt:bool = addDateTimeToPrompt
+        self.sysPromptDropTurn:int = sysPromptDropTurn
+        self.chatHistory:dict[str, str] = []
+        self.chatOperations = {
+            "save": self._handleSave,
+            "restore": self._handleRestore,
+            "rewind": self._handleRewind,
+            "print": self._handlePrint
+        }
         
-    
     def doChat(self, prompt:str) -> str:
-        turn = self.getLastContextTurn()+1
-        self.chatHistory.append(self.strMsg("user", prompt, turn, self.addDateTimeToPrompt))
+        turn = self.getLastContextTurn()+1 if self.addTurnToOllamaDict else None
+        self.chatHistory.append(self.strMsg("user", prompt, turn))
         if self.sysPromptDropTurn:
-            if turn > self.sysPromptDropTurn:
-                response = ollama.chat(self.model, messages=[Chat.strSys(self.sysPrompt)] + self.chatHistory[-self.maxChatLength:])
-            else:
-                response = ollama.chat(self.model, messages=[Chat.strSys("...")] + self.chatHistory[-self.maxChatLength:])
+            response = ollama.chat(self.model, messages=[self.strSys(self.strSys(self.sysPrompt) if turn > self.sysPromptDropTurn else "...")] + self.chatHistory[-self.maxChatLength:])
         else:
-            response = ollama.chat(self.model, messages=[Chat.strSys(self.sysPrompt)] + self.chatHistory[-self.maxChatLength:])
+            response = ollama.chat(self.model, messages=[self.strSys(self.sysPrompt)] + self.chatHistory[-self.maxChatLength:])
         msg = response['message'].content
         self.chatHistory.append(self.strMsg("assistant", msg, turn))
         return msg
     
     def chat(self, prompt: str) -> str:
         try:
-            for operation, handler in self.operations.items():
+            for operation, handler in self.chatOperations.items():
                 if prompt.startswith(operation):
                     return handler(prompt)
             return f"{self.assistantName}: {self.doChat(Chat.addClipBoardIfNeeded(prompt))}\n\n"
@@ -139,6 +136,30 @@ class Chat:
             i += 1
         self.chatHistory = self.chatHistory[:i]
 
+    def retrieveChatHistory(self, startingTurn, endingTurn) -> List[dict[str, str]]:
+        lastContextTurn = self.getLastContextTurn()
+        if lastContextTurn < startingTurn or startingTurn < 1:
+            raise ValueError(f"Invalid startingTurn {startingTurn} (lastContextTurn = {lastContextTurn}). Out of bounds.")
+        if lastContextTurn < endingTurn or endingTurn < 1:
+            raise ValueError(f"Invalid endingTurn {endingTurn} (lastContextTurn = {lastContextTurn}). Out of bounds.")
+        if startingTurn > endingTurn:
+            raise ValueError(f"Invalid startingTurn/endingTurn {startingTurn}/{endingTurn}.")
+        startIndex = self._getFirstChatHistoryIndexForTurn(startingTurn)
+        endIndex = self._getLastChatHistoryIndexForTurn(endingTurn)+1
+        return self.chatHistory[startIndex:endIndex]
+
+    def _getFirstChatHistoryIndexForTurn(self, turn) -> int:
+        for i in range(len(self.chatHistory)):
+            if self.chatHistory[i]["turn"] == turn:
+                return i
+        return -1
+
+    def _getLastChatHistoryIndexForTurn(self, turn) -> int:
+        for i in range(len(self.chatHistory) - 1, -1, -1):
+            if self.chatHistory[i]["turn"] == turn:
+                return i
+        return -1
+
     def getLastContextTurn(self) -> int:
         if len(self.chatHistory) == 0:
             return 0
@@ -164,14 +185,13 @@ class Chat:
             i += 1
         return "\n\n".join(formattedStrings)
 
-    def makeBackup(self, folder:str = None, suffix:str = ""):
-        logsFolder = "./logs"
-        os.makedirs(logsFolder, exist_ok=True)
-        if folder:
-            folderName = f"{folder}_{datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}"
-        else:
+    def makeBackup(self, path:str = None, folderName:str = None, folderSuffix:str = ""):
+        if not path:
+            path = "./logs"
+        os.makedirs(path, exist_ok=True)
+        if not folderName:
             folderName = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-        fullPath = os.path.join(logsFolder, f"{folderName}{suffix}")
+        fullPath = os.path.join(path, f"{folderName}{folderSuffix}")
         os.makedirs(fullPath, exist_ok=True)
         print(f"Folder '{fullPath}' Created")
         FileIO.serializeDict(os.path.join(fullPath, "chat.json"), self.chatHistory)
@@ -182,7 +202,8 @@ class Chat:
                 "assistantName":self.assistantName,
                 "maxChatLength":self.maxChatLength,
                 "sysPrompt":self.sysPrompt,
+                "addTimestampToOllamaDict":self.addTimestampToOllamaDict,
+                "addTurnToOllamaDict":self.addTurnToOllamaDict,
                 "addedDateTimeToPrompt":self.addDateTimeToPrompt,
                 "sysPromptDropTurn":self.sysPromptDropTurn
             })
-        return
